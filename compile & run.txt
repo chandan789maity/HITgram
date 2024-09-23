@@ -1,0 +1,6 @@
+for compile:: javac -cp lib/* -d target/classes src/main/java/com/example/pdfextractor/NGramTextPredictorColorfulTheme.java
+
+
+
+//mvn 
+run :mvn exec:java -Dexec.mainClass="com.example.pdfextractor.NGramTextPredictorColorfulTheme"

@@ -1,0 +1,71 @@
+1. Briefly discuss two most popular reasons of adopting Agile model.  
+The Agile model is chosen by many organizations for its ability to work with any requirement and 
+deliver value incrementally. Two of the most popular reasons for adopting Agile are: 
+1. Flexibility and Adaptability: Agile methodologies, such as Scrum and Kanban, are flexible in 
+responding to changing requirements. By breaking down the project into smaller iterations, teams can 
+quickly adjust priorities and take feedback. This allows teams to response to market dynamics and  
+customer needs, which lead to faster delivery of high-quality products. 
+2. Enhanced Collaboration and Communication: Agile promotes close collaboration among 
+cross-functional teams, including developers, testers, designers, and product owners. Regular meetings 
+such as daily stand-ups, sprint planning, help in communication. This collaborative environment 
+encourages team members to share knowledge, take up challenges, and give solutions together. As a 
+result, Agile teams often experience improved productivity, and innovation. 
+ 2.  Briefly describe one situation when Agile is not the best choice of development? 
+Agile methods are highly effective in many scenarios, but there are situations where they may not be 
+the best choice, such as: 
+Highly Regulated Environments: In industries like healthcare, finance, or aerospace where strict 
+regulation is important, Agile may not always align perfectly and validation process is required. These 
+industries often have tough quality standards that are necessary for advanced planning and 
+documentation, which Agile can’t accommodate within it’s nature. In such cases, a more traditional 
+waterfall or hybrid approach that focuses on advanced planning and documentation may be better 
+suited to ensure regulation. 
+3. What is "Scrum Sprint"?  
+A Scrum Sprint is a time-boxed iteration within the Scrum framework, lasting between one to four 
+weeks. The Sprint provides a focused timeframe for the team to complete a set of prioritized work items 
+from the product backlog, which are selected during the Sprint Planning meeting. 
+During a Sprint, the team holds daily stand-up meetings to discuss progress, identifies pending work, 
+and plan the day's work. At the end of the Sprint, the team conducts a Sprint Review to demonstrate the 
+completed work  and gather feedback. This is followed by a Sprint Recollection where the team 
+identifies areas for improvement. 
+4. What do you understand by "Daily Stand-Up" (or "Daily Scrum") ? 
+The Daily Scrum, also known as the Daily Stand-up or Daily Stand-up Meeting, is a short, time-boxed 
+meeting held by Scrum teams every day during a Sprint. Its primary purpose is to synchronize the 
+activities of team members, discuss progress towards the Sprint Goal, and identify any impediments or 
+obstacles that need to be addressed.  
+The Daily Scrum is typically limited to 15 minutes or less, ensuring that it remains focused and efficient. 
+The Daily Scrum helps to ensure that team members are aligned, informed, and empowered to work 
+collaboratively towards achieving the Sprint Goal. 
+ 
+ 
+ 
+ 
+5. What is the difference between Waterfall and Agile models? 
+ 
+S.no.  Agile model Waterfall model 
+1. Definition Agile model follows the incremental 
+approach. 
+Waterfall model follows a 
+sequential design process. 
+2. Progress In the agile model, the measurement 
+of progress is in terms of developed 
+and delivered functions. 
+In the waterfall model, generally 
+the measurement of progress is in 
+terms of completed and reviewed 
+artifacts. 
+3. Nature Agile model is flexible as there is a 
+possibility of changing the 
+requirements even after starting the 
+development process. 
+The waterfall model is rigid as it 
+does not allow to modify the 
+requirements once the development 
+process starts. 
+4. Customer 
+interaction 
+In Agile model, there is a high 
+customer interaction.  
+Customer interaction in waterfall 
+model is very less.  
+5. Team size It has a small team size. The team may consist of more 
+members. 

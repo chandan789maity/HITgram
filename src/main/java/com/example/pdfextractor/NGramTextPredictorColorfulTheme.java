@@ -1,12 +1,13 @@
 package com.example.pdfextractor;
 
 import javax.swing.*;
+import java.util.List; // Correct import
+import java.util.ArrayList;
 import javax.swing.plaf.ColorUIResource;
-
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-
 import java.awt.*;
+
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
@@ -113,12 +114,15 @@ public class NGramTextPredictorColorfulTheme {
                     File file = fileChooser.getSelectedFile();
                     n = nSlider.getValue();  // Get the value from the slider
                     try {
+                        long startTime = System.currentTimeMillis(); // Start timer
                         if (file.getName().endsWith(".pdf")) {
                             tokenizeAndCalculateProbabilityFromPDF(file);
                         } else {
                             buildNGramModel(file, n);
-                            tokenizeAndCalculateProbability(file);
                         }
+                        long endTime = System.currentTimeMillis(); // End timer
+                        long duration = endTime - startTime; // Calculate duration
+                        chatArea.append("Bot: N-Gram model successfully built from the uploaded corpus file in " + duration + " ms.\n");
                     } catch (IOException ioException) {
                         chatArea.append("Bot: Error reading the uploaded file. Please check the path.\n");
                     }
@@ -201,104 +205,72 @@ public class NGramTextPredictorColorfulTheme {
             nGramModel.putIfAbsent(key, new HashMap<>());
             nGramModel.get(key).put(nextWord, nGramModel.get(key).getOrDefault(nextWord, 0) + 1);
 
-            // Update token frequency map for Laplace Smoothing
-            tokenFrequencyMap.put(key, tokenFrequencyMap.getOrDefault(key, 0) + 1);
+            // Track frequency of each token
+            tokenFrequencyMap.put(nextWord, tokenFrequencyMap.getOrDefault(nextWord, 0) + 1);
         }
     }
 
-    private static String predictNextWords(String sentence, int numTokens) {
-        if (numTokens <= 0) {
-            return "Please enter a positive number of tokens.";
+    // Predict the next words based on input using the built N-Gram model
+    private static String predictNextWords(String inputSentence, int numWords) {
+        String[] inputWords = inputSentence.split("\\s+");
+        String key = String.join(" ", Arrays.copyOfRange(inputWords, Math.max(0, inputWords.length - n + 1), inputWords.length));
+
+        if (!nGramModel.containsKey(key)) {
+            return "No predictions available.";
         }
 
-        String[] words = sentence.split("\\s+");
-        StringBuilder prediction = new StringBuilder();
-
-        for (int i = 0; i < numTokens; i++) {
-            // Build the key based on the last (N-1) words
-            StringBuilder keyBuilder = new StringBuilder();
-            for (int j = Math.max(0, words.length - n + 1); j < words.length; j++) {
-                keyBuilder.append(words[j]).append(" ");
-            }
-            String key = keyBuilder.toString().trim();
-
-            Map<String, Integer> possibleWords = nGramModel.get(key);
-            if (possibleWords != null && !possibleWords.isEmpty()) {
-                // Laplace Smoothing: Calculate probabilities
-                String nextWord = null;
-                double maxProbability = -1;
-                for (Map.Entry<String, Integer> entry : possibleWords.entrySet()) {
-                    double smoothedProbability = (entry.getValue() + 1) / (double) (tokenFrequencyMap.getOrDefault(key, 0) + VOCAB_SIZE);
-                    if (smoothedProbability > maxProbability) {
-                        maxProbability = smoothedProbability;
-                        nextWord = entry.getKey();
-                    }
-                }
-
-                prediction.append(nextWord).append(" ");
-
-                // Update the sentence with the predicted word
-                sentence += " " + nextWord;
-                words = sentence.split("\\s+");
-            } else {
-                chatArea.append("Bot: No matching n-gram key found for: \"" + key + "\".\n");
-                return "Sorry, I couldn't predict the next words based on the given input.";
-            }
+        Map<String, Integer> possibleWords = nGramModel.get(key);
+        List<String> predictedWords = new ArrayList<>();
+        for (int i = 0; i < numWords; i++) {
+            String nextWord = getNextWordWithSmoothing(possibleWords);
+            predictedWords.add(nextWord);
+            key = updateKey(key, nextWord);
         }
 
-        return prediction.toString().trim();
+        return String.join(" ", predictedWords);
     }
 
-    // Tokenize and calculate probability from PDF file
+    // Update key for the next word prediction
+    private static String updateKey(String key, String nextWord) {
+        String[] keyWords = key.split("\\s+");
+        StringBuilder newKeyBuilder = new StringBuilder();
+        for (int i = 1; i < keyWords.length; i++) {
+            newKeyBuilder.append(keyWords[i]).append(" ");
+        }
+        newKeyBuilder.append(nextWord);
+        return newKeyBuilder.toString().trim();
+    }
+
+    // Get the next word using Laplace Smoothing
+    private static String getNextWordWithSmoothing(Map<String, Integer> possibleWords) {
+        int totalCount = 0;
+        for (int count : possibleWords.values()) {
+            totalCount += count;
+        }
+
+        double maxProbability = -1.0;
+        String nextWord = "";
+        for (String word : possibleWords.keySet()) {
+            int wordCount = possibleWords.get(word);
+            double probability = (wordCount + 1.0) / (totalCount + VOCAB_SIZE); // Laplace Smoothing
+            if (probability > maxProbability) {
+                maxProbability = probability;
+                nextWord = word;
+            }
+        }
+
+        return nextWord;
+    }
+
+    // Tokenize PDF and calculate probabilities
     private static void tokenizeAndCalculateProbabilityFromPDF(File file) throws IOException {
         PDDocument document = PDDocument.load(file);
         PDFTextStripper pdfStripper = new PDFTextStripper();
-        String corpus = pdfStripper.getText(document);
+        String text = pdfStripper.getText(document);
         document.close();
 
-        // Tokenize and calculate frequency
-        String[] tokens = corpus.split("\\s+");
-        tokenFrequencyMap.clear();
-        for (String token : tokens) {
-            tokenFrequencyMap.put(token, tokenFrequencyMap.getOrDefault(token, 0) + 1);
-        }
-
-        // Calculate probability
-        chatArea.append("Token\t\tFrequency\t\t\tProbability\n");
-        for (Map.Entry<String, Integer> entry : tokenFrequencyMap.entrySet()) {
-            double probability = entry.getValue() / (double) tokens.length;
-            chatArea.append(entry.getKey() + "\t\t" + entry.getValue() + "\t\t" + probability + "\n");
-        }
-    }
-
-    // Tokenize the file and calculate the probability of each token
-    private static void tokenizeAndCalculateProbability(File file) {
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(file));
-            StringBuilder corpusBuilder = new StringBuilder();
-            String line;
-            while ((line = reader.readLine()) != null) {
-                corpusBuilder.append(line).append(" ");
-            }
-            reader.close();
-            String corpus = corpusBuilder.toString().trim();
-
-            // Tokenize and calculate frequency
-            String[] tokens = corpus.split("\\s+");
-            tokenFrequencyMap.clear();
-            for (String token : tokens) {
-                tokenFrequencyMap.put(token, tokenFrequencyMap.getOrDefault(token, 0) + 1);
-            }
-
-            // Calculate probability
-            chatArea.append("Token\t\tFrequency\t\t\tProbability\n");
-            for (Map.Entry<String, Integer> entry : tokenFrequencyMap.entrySet()) {
-                double probability = entry.getValue() / (double) tokens.length;
-                chatArea.append(entry.getKey() + "\t\t" + entry.getValue() + "\t\t" + probability + "\n");
-            }
-
-        } catch (IOException e) {
-            chatArea.append("Bot: Error reading the uploaded file. Please check the path.\n");
-        }
+        // Assuming we want to build the N-Gram model from the extracted text
+        buildNGramModel(text, n);
+        chatArea.append("Bot: N-Gram model successfully built from the PDF.\n");
     }
 }

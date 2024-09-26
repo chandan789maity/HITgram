@@ -1,8 +1,7 @@
 package com.example.pdfextractor;
-//new commit by Shibaranjani
+
 import javax.swing.*;
 import java.util.List;
-
 import javax.swing.plaf.ColorUIResource;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -205,81 +204,62 @@ public class NGramTextPredictorColorfulTheme {
             Map<String, Integer> nextWordMap = nGramModel.get(nGram.toString());
             nextWordMap.put(nextWord, nextWordMap.getOrDefault(nextWord, 0) + 1);
 
+            // Update frequency map
             tokenFrequencyMap.put(nextWord, tokenFrequencyMap.getOrDefault(nextWord, 0) + 1);
         }
     }
 
-    // Tokenize and build N-Gram model from a PDF file
-    private static void tokenizeAndCalculateProbabilityFromPDF(File pdfFile) throws IOException {
-    long startTime = System.currentTimeMillis(); // Start timer for PDF to text
-    PDDocument document = PDDocument.load(pdfFile);
-    PDFTextStripper pdfStripper = new PDFTextStripper();
-    String text = pdfStripper.getText(document);
-    document.close();
-    long endTime = System.currentTimeMillis(); // End timer for PDF to text
-    long conversionDuration = endTime - startTime; // Calculate PDF to text conversion time
-    
-    chatArea.append("Bot: PDF successfully converted to text in " + conversionDuration + " ms.\n");
-    
-    // Now, proceed with building the N-gram model
-    buildNGramModel(text, n);
-}
-
-    // Predict the next words based on the trained N-Gram model
-    private static String predictNextWords(String input, int numWordsToPredict) {
-        String[] tokens = input.split("\\s+");
-        if (tokens.length < n - 1) {
-            return "Please provide a longer input sentence for N-Gram prediction.";
-        }
-
-        StringBuilder nGramSeed = new StringBuilder();
-        for (int i = tokens.length - (n - 1); i < tokens.length; i++) {
-            nGramSeed.append(tokens[i]).append(" ");
-        }
-        nGramSeed = new StringBuilder(nGramSeed.toString().trim());
-
-        StringBuilder predictedWords = new StringBuilder();
+    // Predict the next word(s) based on the input text
+    private static String predictNextWords(String inputText, int numWordsToPredict) {
+        StringBuilder result = new StringBuilder();
+        String[] inputTokens = inputText.split("\\s+");
 
         for (int i = 0; i < numWordsToPredict; i++) {
-            Map<String, Integer> nextWordMap = nGramModel.get(nGramSeed.toString());
-            if (nextWordMap == null || nextWordMap.isEmpty()) {
-                predictedWords.append("<unknown> ");
+            StringBuilder nGramKey = new StringBuilder();
+            int start = Math.max(0, inputTokens.length - n + 1);
+
+            for (int j = start; j < inputTokens.length; j++) {
+                nGramKey.append(inputTokens[j]).append(" ");
+            }
+            String key = nGramKey.toString().trim();
+
+            if (nGramModel.containsKey(key)) {
+                Map<String, Integer> nextWordMap = nGramModel.get(key);
+                String predictedWord = nextWordMap.entrySet().stream()
+                        .max(Map.Entry.comparingByValue())
+                        .get()
+                        .getKey();
+                result.append(predictedWord).append(" ");
+                inputTokens = Arrays.copyOf(inputTokens, inputTokens.length + 1);
+                inputTokens[inputTokens.length - 1] = predictedWord;
+            } else {
                 break;
             }
-
-            String predictedWord = getPredictedWordWithLaplaceSmoothing(nextWordMap);
-            predictedWords.append(predictedWord).append(" ");
-
-            // Update the nGramSeed to shift the window
-            String[] seedTokens = nGramSeed.toString().split("\\s+");
-            nGramSeed = new StringBuilder();
-            for (int j = 1; j < seedTokens.length; j++) {
-                nGramSeed.append(seedTokens[j]).append(" ");
-            }
-            nGramSeed.append(predictedWord);
         }
 
-        return predictedWords.toString().trim();
+        return result.toString().trim();
     }
 
-    // Get the predicted word with Laplace smoothing applied to N-Gram counts
-    private static String getPredictedWordWithLaplaceSmoothing(Map<String, Integer> nextWordMap) {
-        String predictedWord = "";
-        double maxProbability = Double.NEGATIVE_INFINITY;
+    // Tokenize and build N-Gram model from a PDF file
+    private static void tokenizeAndCalculateProbabilityFromPDF(File pdfFile) throws IOException {
+        long startTime = System.currentTimeMillis(); // Start timer for PDF to text
+        PDDocument document = PDDocument.load(pdfFile);
+        PDFTextStripper pdfStripper = new PDFTextStripper();
+        String text = pdfStripper.getText(document);
+        document.close();
+        long endTime = System.currentTimeMillis(); // End timer for PDF to text
+        long conversionDuration = endTime - startTime; // Calculate PDF to text conversion time
+        
+        // Calculate the byte size of the text after conversion
+        int textSizeInBytes = text.getBytes().length;
+        
+        // Convert size to KB for better readability
+        double textSizeInKB = textSizeInBytes / 1024.0;
+        
+        chatArea.append("Bot: PDF successfully converted to text in " + conversionDuration + " ms.\n");
+        chatArea.append("Bot: The size of the converted text file is approximately " + String.format("%.2f", textSizeInKB) + " KB.\n");
 
-        for (Map.Entry<String, Integer> entry : nextWordMap.entrySet()) {
-            String word = entry.getKey();
-            int count = entry.getValue();
-
-            // Apply Laplace smoothing: P(word|nGram) = (count + 1) / (total + vocabSize)
-            double smoothedProbability = (count + 1.0) / (nextWordMap.size() + VOCAB_SIZE);
-
-            if (smoothedProbability > maxProbability) {
-                maxProbability = smoothedProbability;
-                predictedWord = word;
-            }
-        }
-
-        return predictedWord;
+        // Now, proceed with building the N-gram model
+        buildNGramModel(text, n);
     }
 }

@@ -1,8 +1,8 @@
 package com.example.pdfextractor;
 
 import javax.swing.*;
-import java.util.List; 
-import java.util.ArrayList;
+import java.util.List;
+
 import javax.swing.plaf.ColorUIResource;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -211,12 +211,19 @@ public class NGramTextPredictorColorfulTheme {
 
     // Tokenize and build N-Gram model from a PDF file
     private static void tokenizeAndCalculateProbabilityFromPDF(File pdfFile) throws IOException {
-        PDDocument document = PDDocument.load(pdfFile);
-        PDFTextStripper pdfStripper = new PDFTextStripper();
-        String text = pdfStripper.getText(document);
-        document.close();
-        buildNGramModel(text, n);
-    }
+    long startTime = System.currentTimeMillis(); // Start timer for PDF to text
+    PDDocument document = PDDocument.load(pdfFile);
+    PDFTextStripper pdfStripper = new PDFTextStripper();
+    String text = pdfStripper.getText(document);
+    document.close();
+    long endTime = System.currentTimeMillis(); // End timer for PDF to text
+    long conversionDuration = endTime - startTime; // Calculate PDF to text conversion time
+    
+    chatArea.append("Bot: PDF successfully converted to text in " + conversionDuration + " ms.\n");
+    
+    // Now, proceed with building the N-gram model
+    buildNGramModel(text, n);
+}
 
     // Predict the next words based on the trained N-Gram model
     private static String predictNextWords(String input, int numWordsToPredict) {

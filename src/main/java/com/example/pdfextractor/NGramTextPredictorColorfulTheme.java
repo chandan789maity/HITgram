@@ -1,3 +1,4 @@
+
 package com.example.pdfextractor;
 
 import javax.swing.*;
@@ -88,7 +89,7 @@ public class NGramTextPredictorColorfulTheme {
         submitButton = new JButton("Predict Next Words");
         uploadButton = new JButton("Upload and Build Model");
 
-        // Style buttons with bright accent colors
+// Style buttons with bright accent colors
         submitButton.setBackground(new Color(255, 121, 121));
         submitButton.setForeground(Color.WHITE);
         uploadButton.setBackground(new Color(129, 236, 236));
@@ -168,7 +169,7 @@ public class NGramTextPredictorColorfulTheme {
         UIManager.put("Slider.foreground", new ColorUIResource(Color.DARK_GRAY));
     }
 
-    // Build N-Gram model from a user-uploaded corpus with Laplace Smoothing
+// Build N-Gram model from a user-uploaded corpus with Laplace Smoothing
     private static void buildNGramModel(File file, int n) {
         try {
             BufferedReader reader = new BufferedReader(new FileReader(file));
@@ -240,26 +241,36 @@ public class NGramTextPredictorColorfulTheme {
         return result.toString().trim();
     }
 
-    // Tokenize and build N-Gram model from a PDF file
-    private static void tokenizeAndCalculateProbabilityFromPDF(File pdfFile) throws IOException {
-        long startTime = System.currentTimeMillis(); // Start timer for PDF to text
-        PDDocument document = PDDocument.load(pdfFile);
-        PDFTextStripper pdfStripper = new PDFTextStripper();
-        String text = pdfStripper.getText(document);
-        document.close();
-        long endTime = System.currentTimeMillis(); // End timer for PDF to text
-        long conversionDuration = endTime - startTime; // Calculate PDF to text conversion time
-        
-        // Calculate the byte size of the text after conversion
-        int textSizeInBytes = text.getBytes().length;
-        
-        // Convert size to KB for better readability
-        double textSizeInKB = textSizeInBytes / 1024.0;
-        
-        chatArea.append("Bot: PDF successfully converted to text in " + conversionDuration + " ms.\n");
-        chatArea.append("Bot: The size of the converted text file is approximately " + String.format("%.2f", textSizeInKB) + " KB.\n");
+// Tokenize and build N-Gram model from a PDF file
+private static void tokenizeAndCalculateProbabilityFromPDF(File pdfFile) throws IOException {
+    long startTime = System.currentTimeMillis(); // Start timer for PDF to text
+    PDDocument document = PDDocument.load(pdfFile);
+    PDFTextStripper pdfStripper = new PDFTextStripper();
+    String text = pdfStripper.getText(document);
+    document.close();
+    long endTime = System.currentTimeMillis(); // End timer for PDF to text
+    long conversionDuration = endTime - startTime; // Calculate PDF to text conversion time
+    
+    // Calculate the byte size of the text after conversion
+    int textSizeInBytes = text.getBytes().length;
+    
+    // Convert size to KB for better readability
+    double textSizeInKB = textSizeInBytes / 1024.0;
+    
+    chatArea.append("Bot: PDF successfully converted to text in " + conversionDuration + " ms.\n");
+    chatArea.append("Bot: The size of the converted text file is approximately " + String.format("%.2f", textSizeInKB) + " KB.\n");
 
-        // Now, proceed with building the N-gram model
-        buildNGramModel(text, n);
-    }
+    // Start timer for tokenization
+    long tokenizationStartTime = System.currentTimeMillis();
+    
+    // Now, proceed with building the N-gram model
+    buildNGramModel(text, n);
+
+    // End timer for tokenization
+    long tokenizationEndTime = System.currentTimeMillis();
+    long tokenizationDuration = tokenizationEndTime - tokenizationStartTime; // Calculate tokenization time
+    
+    chatArea.append("Bot: Tokenization completed in " + tokenizationDuration + " ms.\n");
+}
+
 }

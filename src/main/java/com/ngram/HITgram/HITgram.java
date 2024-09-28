@@ -1,5 +1,6 @@
 
-package com.example.pdfextractor;
+
+package com.ngram.HITgram;
 
 import javax.swing.*;
 import java.util.List;
@@ -12,7 +13,7 @@ import java.awt.event.ActionListener;
 import java.io.*;
 import java.util.*;
 
-public class NGramTextPredictorColorfulTheme {
+public class HITgram {
     private static JTextArea chatArea;
     private static JTextField inputSentenceField, inputNumWordsField;
     private static JSlider nSlider;

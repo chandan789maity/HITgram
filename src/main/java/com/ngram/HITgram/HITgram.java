@@ -1,5 +1,3 @@
-
-
 package com.ngram.HITgram;
 
 import javax.swing.*;
@@ -17,11 +15,11 @@ public class HITgram {
     private static JTextArea chatArea;
     private static JTextField inputSentenceField, inputNumWordsField;
     private static JSlider nSlider;
-    private static JButton submitButton, uploadButton;
+    private static JButton submitButton, uploadButton, perplexityButton;
     private static JFileChooser fileChooser;
     private static Map<String, Map<String, Integer>> nGramModel = new HashMap<>();
     private static Map<String, Integer> tokenFrequencyMap = new HashMap<>();
-    private static int n = 3; // Default N-Gram size (trigram)
+    private static int n = 2; // Default N-Gram size (bigram)
     private static final int VOCAB_SIZE = 10000; // Estimate of vocabulary size for smoothing
 
     public static void main(String[] args) {
@@ -63,7 +61,7 @@ public class HITgram {
         // Slider panel for selecting N value
         JPanel sliderPanel = new JPanel(new BorderLayout());
         sliderPanel.setBackground(new Color(245, 245, 245));
-        nSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 3);
+        nSlider = new JSlider(JSlider.HORIZONTAL, 1, 10, 2);
         nSlider.setMajorTickSpacing(1);
         nSlider.setPaintTicks(true);
         nSlider.setPaintLabels(true);
@@ -89,17 +87,21 @@ public class HITgram {
         // Buttons for actions
         submitButton = new JButton("Predict Next Words");
         uploadButton = new JButton("Upload and Build Model");
+        perplexityButton = new JButton("Calculate Perplexity");
 
-// Style buttons with bright accent colors
+        // Style buttons with bright accent colors
         submitButton.setBackground(new Color(255, 121, 121));
         submitButton.setForeground(Color.WHITE);
         uploadButton.setBackground(new Color(129, 236, 236));
         uploadButton.setForeground(Color.BLACK);
+        perplexityButton.setBackground(new Color(250, 177, 160));
+        perplexityButton.setForeground(Color.BLACK);
 
         JPanel buttonPanel = new JPanel();
         buttonPanel.setBackground(new Color(245, 245, 245));
         buttonPanel.add(uploadButton);
         buttonPanel.add(submitButton);
+        buttonPanel.add(perplexityButton);
         panel.add(buttonPanel, BorderLayout.NORTH);
 
         // File chooser for uploading corpus
@@ -154,6 +156,21 @@ public class HITgram {
             }
         });
 
+        // Action listener for calculating perplexity of a test sentence
+        perplexityButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String inputSentence = inputSentenceField.getText().trim();
+                if (!inputSentence.isEmpty()) {
+                    chatArea.append("User: " + inputSentence + "\n");
+                    double perplexity = calculatePerplexity(inputSentence);
+                    chatArea.append("Bot: Perplexity of the sentence: " + perplexity + "\n");
+                } else {
+                    chatArea.append("Bot: Please provide a sentence to calculate perplexity.\n");
+                }
+            }
+        });
+
         frame.add(panel);
         frame.setVisible(true);
     }
@@ -170,7 +187,7 @@ public class HITgram {
         UIManager.put("Slider.foreground", new ColorUIResource(Color.DARK_GRAY));
     }
 
-// Build N-Gram model from a user-uploaded corpus with Laplace Smoothing
+    // Build N-Gram model from a user-uploaded corpus with Laplace Smoothing
     private static void buildNGramModel(File file, int n) {
         try {
             BufferedReader reader = new BufferedReader(new FileReader(file));
@@ -188,90 +205,102 @@ public class HITgram {
         }
     }
 
-    // Build N-Gram model from a corpus
+    // Build N-Gram model from the given corpus string
     private static void buildNGramModel(String corpus, int n) {
-        String[] words = corpus.split("\\s+");
-        nGramModel.clear(); // Clear the existing model before building a new one
-        tokenFrequencyMap.clear(); // Clear token frequency map
+        nGramModel.clear();
+        tokenFrequencyMap.clear();
 
-        for (int i = 0; i <= words.length - n; i++) {
-            StringBuilder nGram = new StringBuilder();
+        String[] tokens = corpus.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+");
+        for (int i = 0; i <= tokens.length - n; i++) {
+            StringBuilder nGramBuilder = new StringBuilder();
             for (int j = 0; j < n - 1; j++) {
-                nGram.append(words[i + j]).append(" ");
+                nGramBuilder.append(tokens[i + j]).append(" ");
             }
-            nGram = new StringBuilder(nGram.toString().trim());
-            String nextWord = words[i + n - 1];
+            String nGramPrefix = nGramBuilder.toString().trim();
+            String nextToken = tokens[i + n - 1];
 
-            nGramModel.putIfAbsent(nGram.toString(), new HashMap<>());
-            Map<String, Integer> nextWordMap = nGramModel.get(nGram.toString());
-            nextWordMap.put(nextWord, nextWordMap.getOrDefault(nextWord, 0) + 1);
+            tokenFrequencyMap.put(nextToken, tokenFrequencyMap.getOrDefault(nextToken, 0) + 1);
 
-            // Update frequency map
-            tokenFrequencyMap.put(nextWord, tokenFrequencyMap.getOrDefault(nextWord, 0) + 1);
+            nGramModel.putIfAbsent(nGramPrefix, new HashMap<>());
+            Map<String, Integer> suffixMap = nGramModel.get(nGramPrefix);
+            suffixMap.put(nextToken, suffixMap.getOrDefault(nextToken, 0) + 1);
         }
     }
 
-    // Predict the next word(s) based on the input text
-    private static String predictNextWords(String inputText, int numWordsToPredict) {
+    // Predict the next word based on N-Gram model with smoothing
+    private static String predictNextWords(String inputSentence, int numWordsToPredict) {
+        String[] inputTokens = inputSentence.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+");
         StringBuilder result = new StringBuilder();
-        String[] inputTokens = inputText.split("\\s+");
+        List<String> context = new ArrayList<>(Arrays.asList(inputTokens));
 
         for (int i = 0; i < numWordsToPredict; i++) {
-            StringBuilder nGramKey = new StringBuilder();
-            int start = Math.max(0, inputTokens.length - n + 1);
-
-            for (int j = start; j < inputTokens.length; j++) {
-                nGramKey.append(inputTokens[j]).append(" ");
+            StringBuilder nGramBuilder = new StringBuilder();
+            for (int j = Math.max(0, context.size() - (n - 1)); j < context.size(); j++) {
+                nGramBuilder.append(context.get(j)).append(" ");
             }
-            String key = nGramKey.toString().trim();
-
-            if (nGramModel.containsKey(key)) {
-                Map<String, Integer> nextWordMap = nGramModel.get(key);
-                String predictedWord = nextWordMap.entrySet().stream()
-                        .max(Map.Entry.comparingByValue())
-                        .get()
-                        .getKey();
-                result.append(predictedWord).append(" ");
-                inputTokens = Arrays.copyOf(inputTokens, inputTokens.length + 1);
-                inputTokens[inputTokens.length - 1] = predictedWord;
-            } else {
-                break;
-            }
+            String nGramPrefix = nGramBuilder.toString().trim();
+            String predictedWord = predictNextWordForNGram(nGramPrefix);
+            context.add(predictedWord);
+            result.append(predictedWord).append(" ");
         }
-
         return result.toString().trim();
     }
 
-// Tokenize and build N-Gram model from a PDF file
-private static void tokenizeAndCalculateProbabilityFromPDF(File pdfFile) throws IOException {
-    long startTime = System.currentTimeMillis(); // Start timer for PDF to text
-    PDDocument document = PDDocument.load(pdfFile);
-    PDFTextStripper pdfStripper = new PDFTextStripper();
-    String text = pdfStripper.getText(document);
-    document.close();
-    long endTime = System.currentTimeMillis(); // End timer for PDF to text
-    long conversionDuration = endTime - startTime; // Calculate PDF to text conversion time
-    
-    // Calculate the byte size of the text after conversion
-    int textSizeInBytes = text.getBytes().length;
-    
-    // Convert size to KB for better readability
-    double textSizeInKB = textSizeInBytes / 1024.0;
-    
-    chatArea.append("Bot: PDF successfully converted to text in " + conversionDuration + " ms.\n");
-    chatArea.append("Bot: The size of the converted text file is approximately " + String.format("%.2f", textSizeInKB) + " KB.\n");
+    // Predict the next word using N-Gram model and Laplace smoothing
+    private static String predictNextWordForNGram(String nGramPrefix) {
+        Map<String, Integer> suffixMap = nGramModel.getOrDefault(nGramPrefix, new HashMap<>());
+        int totalSuffixCount = suffixMap.values().stream().mapToInt(Integer::intValue).sum();
+        double maxProbability = -1.0;
+        String predictedWord = null;
 
-    // Start timer for tokenization
-    long tokenizationStartTime = System.currentTimeMillis();
-    
-    // Now, proceed with building the N-gram model
-    buildNGramModel(text, n);
+        for (Map.Entry<String, Integer> entry : suffixMap.entrySet()) {
+            String word = entry.getKey();
+            int count = entry.getValue();
+            double probability = (count + 1.0) / (totalSuffixCount + VOCAB_SIZE); // Laplace smoothing
+            if (probability > maxProbability) {
+                maxProbability = probability;
+                predictedWord = word;
+            }
+        }
+        if (predictedWord == null) {
+            predictedWord = "unknown"; // Handle case where no suitable word is found
+        }
+        return predictedWord;
+    }
 
-    // End timer for tokenization
-    long tokenizationEndTime = System.currentTimeMillis();
-    long tokenizationDuration = tokenizationEndTime - tokenizationStartTime; // Calculate tokenization time
-    
-    chatArea.append("Bot: Tokenization completed in " + tokenizationDuration + " ms.\n");
-}
+    // Calculate probability of a given sentence using the N-Gram model
+    private static double calculateProbability(String sentence) {
+        String[] tokens = sentence.toLowerCase().replaceAll("[^a-zA-Z ]", "").split("\\s+");
+        double probability = 1.0;
 
+        for (int i = 0; i <= tokens.length - n; i++) {
+            StringBuilder nGramBuilder = new StringBuilder();
+            for (int j = 0; j < n - 1; j++) {
+                nGramBuilder.append(tokens[i + j]).append(" ");
+            }
+            String nGramPrefix = nGramBuilder.toString().trim();
+            String nextToken = tokens[i + n - 1];
+            Map<String, Integer> suffixMap = nGramModel.getOrDefault(nGramPrefix, new HashMap<>());
+            int count = suffixMap.getOrDefault(nextToken, 0);
+            int totalSuffixCount = suffixMap.values().stream().mapToInt(Integer::intValue).sum();
+            probability *= (count + 1.0) / (totalSuffixCount + VOCAB_SIZE); // Laplace smoothing
+        }
+        return probability;
+    }
+
+    // Calculate perplexity of a sentence
+    private static double calculatePerplexity(String sentence) {
+        double probability = calculateProbability(sentence);
+        int numTokens = sentence.split("\\s+").length;
+        return Math.pow(1.0 / probability, 1.0 / numTokens);
+    }
+
+    // Tokenize PDF file and calculate the N-Gram model from the text content
+    private static void tokenizeAndCalculateProbabilityFromPDF(File file) throws IOException {
+        PDDocument document = PDDocument.load(file);
+        PDFTextStripper pdfStripper = new PDFTextStripper();
+        String pdfText = pdfStripper.getText(document);
+        document.close();
+        buildNGramModel(pdfText, n);
+    }
 }
